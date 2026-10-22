@@ -1,7 +1,35 @@
+"use client";
+
+import { useState } from "react";
 import Header from "@/components/Header";
 import StatCard from "@/components/StatCard";
+import TicketCard from "@/components/TicketCard";
+import { sampleTickets } from "@/data/sampleTickets";
+import { Ticket } from "@/types/ticket";
 
 export default function Home() {
+  const [tickets, setTickets] = useState<Ticket[]>(sampleTickets);
+
+  const totalCount = tickets.length;
+  const openCount = tickets.filter((t) => t.status === "open").length;
+  const inProgressCount = tickets.filter((t) => t.status === "in-progress").length;
+  const resolvedCount = tickets.filter((t) => t.status === "resolved").length;
+
+  function handleAddTicket() {
+    const newTicket: Ticket = {
+      id: Date.now(),
+      name: "Test User",
+      email: "test@gmail.com",
+      title: "New test ticket",
+      category: "other",
+      priority: "low",
+      description: "Added with the test button.",
+      status: "open",
+    };
+
+    setTickets([...tickets, newTicket]);
+  }
+
   return (
     <>
       <Header />
@@ -13,11 +41,26 @@ export default function Home() {
         </p>
 
         <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard title="Total Tickets" value={99} />
-          <StatCard title="Open Tickets" value={2} />
-          <StatCard title="In Progress" value={1} />
-          <StatCard title="Resolved" value={1} />
+          <StatCard title="Total Tickets" value={totalCount} />
+          <StatCard title="Open Tickets" value={openCount} />
+          <StatCard title="In Progress" value={inProgressCount} />
+          <StatCard title="Resolved" value={resolvedCount} />
         </div>
+
+        <h3 className="mt-10 text-xl font-bold">Recent Tickets</h3>
+
+        <div className="mt-4 space-y-3">
+          {tickets.map((ticket) => (
+            <TicketCard key={ticket.id} ticket={ticket} />
+          ))}
+        </div>
+
+        <button
+          onClick={handleAddTicket}
+          className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-white"
+        >
+          Add test ticket
+        </button>
       </main>
     </>
   );
