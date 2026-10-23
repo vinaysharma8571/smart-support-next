@@ -4,35 +4,54 @@ import { useState } from "react";
 import { Ticket, TicketCategory, TicketPriority } from "@/types/ticket";
 
 type TicketFormProps = {
+  editingTicket: Ticket | null;
   onCreate: (ticket: Ticket) => void;
+  onUpdate: (ticket: Ticket) => void;
+  onCancelEdit: () => void;
 };
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
 
-export default function TicketForm({ onCreate }: TicketFormProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<TicketCategory | "">("");
-  const [priority, setPriority] = useState<TicketPriority | "">("");
-  const [description, setDescription] = useState("");
+export default function TicketForm({
+  editingTicket,
+  onCreate,
+  onUpdate,
+  onCancelEdit,
+}: TicketFormProps) {
+  const [name, setName] = useState(editingTicket?.name ?? "");
+  const [email, setEmail] = useState(editingTicket?.email ?? "");
+  const [title, setTitle] = useState(editingTicket?.title ?? "");
+  const [category, setCategory] = useState<TicketCategory | "">(
+    editingTicket?.category ?? ""
+  );
+  const [priority, setPriority] = useState<TicketPriority | "">(
+    editingTicket?.priority ?? ""
+  );
+  const [description, setDescription] = useState(
+    editingTicket?.description ?? ""
+  );
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (category === "" || priority === "") return;
 
-    onCreate({
-      id: Date.now(),
+    const fields = {
       name: name.trim(),
       email: email.trim(),
       title: title.trim(),
       category,
       priority,
       description: description.trim(),
-      status: "open",
-    });
+    };
+
+    if (editingTicket) {
+      onUpdate({ ...editingTicket, ...fields });
+      return;
+    }
+
+    onCreate({ id: Date.now(), ...fields, status: "open" });
 
     setName("");
     setEmail("");
@@ -47,9 +66,13 @@ export default function TicketForm({ onCreate }: TicketFormProps) {
       onSubmit={handleSubmit}
       className="rounded-xl border border-gray-300 p-5 dark:border-gray-700"
     >
-      <h3 className="text-xl font-bold">Create a Support Ticket</h3>
+      <h3 className="text-xl font-bold">
+        {editingTicket ? "Edit ticket" : "Create a Support Ticket"}
+      </h3>
       <p className="mt-1 text-sm text-gray-500">
-        Tell us about your problem and our support team will help you.
+        {editingTicket
+          ? "Change the details and save."
+          : "Tell us about your problem and our support team will help you."}
       </p>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -135,12 +158,24 @@ export default function TicketForm({ onCreate }: TicketFormProps) {
         </div>
       </div>
 
-      <button
-        type="submit"
-        className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
-      >
-        Create ticket
-      </button>
+      <div className="mt-4 flex gap-3">
+        <button
+          type="submit"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+        >
+          {editingTicket ? "Save changes" : "Create ticket"}
+        </button>
+
+        {editingTicket && (
+          <button
+            type="button"
+            onClick={onCancelEdit}
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-700"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }

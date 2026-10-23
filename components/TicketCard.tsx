@@ -1,4 +1,4 @@
-import { Ticket } from "@/types/ticket";
+import { Ticket, TicketStatus } from "@/types/ticket";
 import {
   categoryLabels,
   priorityLabels,
@@ -8,9 +8,19 @@ import {
 
 type TicketCardProps = {
   ticket: Ticket;
+  onDelete: (id: number) => void;
+  onEdit: (ticket: Ticket) => void;
+  onStatusChange: (id: number, status: TicketStatus) => void;
 };
 
-export default function TicketCard({ ticket }: TicketCardProps) {
+const statuses = Object.keys(statusLabels) as TicketStatus[];
+
+export default function TicketCard({
+  ticket,
+  onDelete,
+  onEdit,
+  onStatusChange,
+}: TicketCardProps) {
   return (
     <div className="rounded-xl border border-gray-300 p-4 dark:border-gray-700">
       <div className="flex items-start justify-between gap-4">
@@ -30,9 +40,41 @@ export default function TicketCard({ ticket }: TicketCardProps) {
 
       <p className="mt-3 text-sm">{ticket.description}</p>
 
-      <p className="mt-3 text-xs text-gray-500">
-        #{ticket.id} | {ticket.name} | {ticket.email}
-      </p>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-xs text-gray-500">
+          #{ticket.id} | {ticket.name} | {ticket.email}
+        </p>
+
+        <div className="flex items-center gap-2">
+          <select
+            value={ticket.status}
+            onChange={(e) =>
+              onStatusChange(ticket.id, e.target.value as TicketStatus)
+            }
+            className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          >
+            {statuses.map((s) => (
+              <option key={s} value={s}>
+                {statusLabels[s]}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => onEdit(ticket)}
+            className="rounded-lg border border-gray-300 px-3 py-1 text-xs dark:border-gray-700"
+          >
+            Edit
+          </button>
+
+          <button
+            onClick={() => onDelete(ticket.id)}
+            className="rounded-lg border border-red-300 px-3 py-1 text-xs text-red-600"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
