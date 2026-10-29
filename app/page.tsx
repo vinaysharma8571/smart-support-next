@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import StatCard from "@/components/StatCard";
 import TicketCard from "@/components/TicketCard";
 import TicketForm from "@/components/TicketForm";
 import TicketFilters, { Filters } from "@/components/TicketFilters";
-import { sampleTickets } from "@/data/sampleTickets";
-import { Ticket, TicketStatus } from "@/types/ticket";
+import { apiRequest } from "@/lib/api";
+import { Ticket, TicketInput, TicketStatus } from "@/types/ticket";
 
 export default function Home() {
-  const [tickets, setTickets] = useState<Ticket[]>(sampleTickets);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [filters, setFilters] = useState<Filters>({
     search: "",
@@ -18,6 +20,21 @@ export default function Home() {
     priority: "all",
     category: "all",
   });
+
+  useEffect(() => {
+    async function loadTickets() {
+      try {
+        const data = await apiRequest<Ticket[]>("/api/tickets");
+        setTickets(data);
+      } catch {
+        setError("Could not load tickets. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTickets();
+  }, []);
 
   const totalCount = tickets.length;
   const openCount = tickets.filter((t) => t.status === "open").length;
@@ -42,22 +59,67 @@ export default function Home() {
     return matchesSearch && matchesStatus && matchesPriority && matchesCategory;
   });
 
-  function handleCreateTicket(ticket: Ticket) {
-    setTickets([...tickets, ticket]);
+  async function handleCreateTicket(data: TicketInput) {
+    try {
+      const created = await apiRequest<Ticket>("/api/tickets", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      setTickets((current) => [...current, created]);
+      setError("");
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create ticket.");
+      return false;
+    }
   }
 
-  function handleUpdateTicket(updated: Ticket) {
-    setTickets(tickets.map((t) => (t.id === updated.id ? updated : t)));
-    setEditingTicket(null);
+  async function handleUpdateTicket(updated: Ticket) {
+    try {
+      const saved = await apiRequest<Ticket>(`/api/tickets/${updated.id}`, {
+        method: "PUT",
+        body: JSON.stringify(updated),
+      });
+
+      setTickets((current) =>
+        current.map((t) => (t.id === saved.id ? saved : t))
+      );
+      setEditingTicket(null);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update ticket.");
+    }
   }
 
-  function handleDeleteTicket(id: number) {
-    setTickets(tickets.filter((t) => t.id !== id));
-    if (editingTicket?.id === id) setEditingTicket(null);
+  async function handleStatusChange(id: number, status: TicketStatus) {
+    try {
+      const saved = await apiRequest<Ticket>(`/api/tickets/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ status }),
+      });
+
+      setTickets((current) =>
+        current.map((t) => (t.id === saved.id ? saved : t))
+      );
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not change status.");
+    }
   }
 
-  function handleStatusChange(id: number, status: TicketStatus) {
-    setTickets(tickets.map((t) => (t.id === id ? { ...t, status } : t)));
+  async function handleDeleteTicket(id: number) {
+    if (!window.confirm("Delete this ticket?")) return;
+
+    try {
+      await apiRequest(`/api/tickets/${id}`, { method: "DELETE" });
+
+      setTickets((current) => current.filter((t) => t.id !== id));
+      if (editingTicket?.id === id) setEditingTicket(null);
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete ticket.");
+    }
   }
 
   function handleEditTicket(ticket: Ticket) {
@@ -98,8 +160,16 @@ export default function Home() {
 
         <TicketFilters filters={filters} onChange={setFilters} />
 
+        {error && (
+          <p className="mt-4 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm text-red-700">
+            {error}
+          </p>
+        )}
+
         <div className="mt-4 space-y-3">
-          {visibleTickets.length === 0 ? (
+          {loading ? (
+            <p className="text-sm text-gray-500">Loading tickets...</p>
+          ) : visibleTickets.length === 0 ? (
             <p className="text-sm text-gray-500">
               {tickets.length === 0
                 ? "No tickets yet. Create your first ticket above."

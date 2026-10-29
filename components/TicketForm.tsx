@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Ticket, TicketCategory, TicketPriority } from "@/types/ticket";
+import {
+  Ticket,
+  TicketCategory,
+  TicketInput,
+  TicketPriority,
+} from "@/types/ticket";
 
 type TicketFormProps = {
   editingTicket: Ticket | null;
-  onCreate: (ticket: Ticket) => void;
-  onUpdate: (ticket: Ticket) => void;
+  onCreate: (data: TicketInput) => Promise<boolean>;
+  onUpdate: (ticket: Ticket) => Promise<void>;
   onCancelEdit: () => void;
 };
 
@@ -31,13 +36,14 @@ export default function TicketForm({
   const [description, setDescription] = useState(
     editingTicket?.description ?? ""
   );
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (category === "" || priority === "") return;
 
-    const fields = {
+    const fields: TicketInput = {
       name: name.trim(),
       email: email.trim(),
       title: title.trim(),
@@ -46,19 +52,25 @@ export default function TicketForm({
       description: description.trim(),
     };
 
+    setSubmitting(true);
+
     if (editingTicket) {
-      onUpdate({ ...editingTicket, ...fields });
+      await onUpdate({ ...editingTicket, ...fields });
+      setSubmitting(false);
       return;
     }
 
-    onCreate({ id: Date.now(), ...fields, status: "open" });
+    const created = await onCreate(fields);
+    setSubmitting(false);
 
-    setName("");
-    setEmail("");
-    setTitle("");
-    setCategory("");
-    setPriority("");
-    setDescription("");
+    if (created) {
+      setName("");
+      setEmail("");
+      setTitle("");
+      setCategory("");
+      setPriority("");
+      setDescription("");
+    }
   }
 
   return (
@@ -161,9 +173,14 @@ export default function TicketForm({
       <div className="mt-4 flex gap-3">
         <button
           type="submit"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white"
+          disabled={submitting}
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
         >
-          {editingTicket ? "Save changes" : "Create ticket"}
+          {submitting
+            ? "Saving..."
+            : editingTicket
+              ? "Save changes"
+              : "Create ticket"}
         </button>
 
         {editingTicket && (

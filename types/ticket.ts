@@ -17,3 +17,5 @@ export type Ticket = {
   description: string;
   status: TicketStatus;
 };
+
+export type TicketInput = Omit<Ticket, "id" | "status">;
