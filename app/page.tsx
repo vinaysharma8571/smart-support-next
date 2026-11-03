@@ -7,9 +7,14 @@ import TicketCard from "@/components/TicketCard";
 import TicketForm from "@/components/TicketForm";
 import TicketFilters, { Filters } from "@/components/TicketFilters";
 import { apiRequest } from "@/lib/api";
+import { useSession } from "@/lib/auth-client";
 import { Ticket, TicketInput, TicketStatus } from "@/types/ticket";
 
 export default function Home() {
+  const { data: session } = useSession();
+  const user = session?.user;
+  const role = user && "role" in user ? String(user.role) : "customer";
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -180,6 +185,7 @@ export default function Home() {
               <TicketCard
                 key={ticket.id}
                 ticket={ticket}
+                role={role}
                 onDelete={handleDeleteTicket}
                 onEdit={handleEditTicket}
                 onStatusChange={handleStatusChange}
