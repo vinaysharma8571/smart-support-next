@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/session";
 import { ticketInputSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Please log in" }, { status: 401 });
+  }
+
   const tickets = await prisma.ticket.findMany({
+    where: user.role === "customer" ? { ownerId: user.id } : undefined,
     orderBy: { createdAt: "asc" },
   });
 
@@ -13,6 +21,12 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Please log in" }, { status: 401 });
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = ticketInputSchema.safeParse(body);
 
@@ -23,7 +37,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const ticket = await prisma.ticket.create({ data: parsed.data });
+  const ticket = await prisma.ticket.create({
+    data: { ...parsed.data, ownerId: user.id },
+  });
 
   return NextResponse.json(ticket, { status: 201 });
 }
