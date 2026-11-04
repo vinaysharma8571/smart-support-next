@@ -1,4 +1,8 @@
-import { Ticket, TicketStatus } from "@/types/ticket";
+"use client";
+
+import { useState } from "react";
+import Comments from "@/components/Comments";
+import { Agent, Ticket, TicketStatus } from "@/types/ticket";
 import {
   categoryLabels,
   priorityLabels,
@@ -9,9 +13,11 @@ import {
 type TicketCardProps = {
   ticket: Ticket;
   role: string;
+  agents: Agent[];
   onDelete: (id: number) => void;
   onEdit: (ticket: Ticket) => void;
   onStatusChange: (id: number, status: TicketStatus) => void;
+  onAssign: (id: number, assigneeId: string | null) => void;
 };
 
 const statusOptions: TicketStatus[] = [
@@ -21,14 +27,21 @@ const statusOptions: TicketStatus[] = [
   "closed",
 ];
 
+const selectClass =
+  "rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
+
 export default function TicketCard({
   ticket,
   role,
+  agents,
   onDelete,
   onEdit,
   onStatusChange,
+  onAssign,
 }: TicketCardProps) {
-  const canChangeStatus = role === "agent" || role === "admin";
+  const [showComments, setShowComments] = useState(false);
+
+  const isStaff = role === "agent" || role === "admin";
   const canDelete = role === "admin";
 
   return (
@@ -47,6 +60,10 @@ export default function TicketCard({
         priority
       </p>
 
+      <p className="mt-1 text-sm text-gray-500">
+        Assigned to: {ticket.assigneeName ?? "Nobody yet"}
+      </p>
+
       <p className="mt-3 text-sm">{ticket.description}</p>
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -55,13 +72,30 @@ export default function TicketCard({
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
-          {canChangeStatus && (
+          {isStaff && (
+            <select
+              value={ticket.assigneeId ?? ""}
+              onChange={(e) =>
+                onAssign(ticket.id, e.target.value === "" ? null : e.target.value)
+              }
+              className={selectClass}
+            >
+              <option value="">Unassigned</option>
+              {agents.map((agent) => (
+                <option key={agent.id} value={agent.id}>
+                  {agent.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {isStaff && (
             <select
               value={ticket.status}
               onChange={(e) =>
                 onStatusChange(ticket.id, e.target.value as TicketStatus)
               }
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className={selectClass}
             >
               {statusOptions.map((status) => (
                 <option key={status} value={status}>
@@ -70,6 +104,13 @@ export default function TicketCard({
               ))}
             </select>
           )}
+
+          <button
+            onClick={() => setShowComments((current) => !current)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm dark:border-gray-700"
+          >
+            {showComments ? "Hide comments" : "Comments"}
+          </button>
 
           <button
             onClick={() => onEdit(ticket)}
@@ -88,6 +129,8 @@ export default function TicketCard({
           )}
         </div>
       </div>
+
+      {showComments && <Comments ticketId={ticket.id} />}
     </div>
   );
 }

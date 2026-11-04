@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
+import { attachAssignees } from "@/lib/tickets";
 import { ticketInputSchema } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export async function GET() {
     orderBy: { createdAt: "asc" },
   });
 
-  return NextResponse.json(tickets);
+  return NextResponse.json(await attachAssignees(tickets));
 }
 
 export async function POST(request: Request) {
@@ -41,5 +42,7 @@ export async function POST(request: Request) {
     data: { ...parsed.data, ownerId: user.id },
   });
 
-  return NextResponse.json(ticket, { status: 201 });
+  const [withAssignee] = await attachAssignees([ticket]);
+
+  return NextResponse.json(withAssignee, { status: 201 });
 }

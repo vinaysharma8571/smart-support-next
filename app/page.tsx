@@ -8,14 +8,16 @@ import TicketForm from "@/components/TicketForm";
 import TicketFilters, { Filters } from "@/components/TicketFilters";
 import { apiRequest } from "@/lib/api";
 import { useSession } from "@/lib/auth-client";
-import { Ticket, TicketInput, TicketStatus } from "@/types/ticket";
+import { Agent, Ticket, TicketInput, TicketStatus } from "@/types/ticket";
 
 export default function Home() {
   const { data: session } = useSession();
   const user = session?.user;
   const role = user && "role" in user ? String(user.role) : "customer";
+  const isStaff = role === "agent" || role === "admin";
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
@@ -40,6 +42,21 @@ export default function Home() {
 
     loadTickets();
   }, []);
+
+  useEffect(() => {
+    if (!isStaff) return;
+
+    async function loadAgents() {
+      try {
+        const data = await apiRequest<Agent[]>("/api/agents");
+        setAgents(data);
+      } catch {
+        setError("Could not load the list of agents.");
+      }
+    }
+
+    loadAgents();
+  }, [isStaff]);
 
   const totalCount = tickets.length;
   const openCount = tickets.filter((t) => t.status === "open").length;
@@ -110,6 +127,22 @@ export default function Home() {
       setError("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not change status.");
+    }
+  }
+
+  async function handleAssign(id: number, assigneeId: string | null) {
+    try {
+      const saved = await apiRequest<Ticket>(`/api/tickets/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ assigneeId }),
+      });
+
+      setTickets((current) =>
+        current.map((t) => (t.id === saved.id ? saved : t))
+      );
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not assign ticket.");
     }
   }
 
@@ -186,9 +219,11 @@ export default function Home() {
                 key={ticket.id}
                 ticket={ticket}
                 role={role}
+                agents={agents}
                 onDelete={handleDeleteTicket}
                 onEdit={handleEditTicket}
                 onStatusChange={handleStatusChange}
+                onAssign={handleAssign}
               />
             ))
           )}

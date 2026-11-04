@@ -11,4 +11,13 @@ export const ticketInputSchema = z.object({
 
 export const ticketUpdateSchema = ticketInputSchema.partial().extend({
   status: z.enum(["open", "in-progress", "resolved", "closed"]).optional(),
+  assigneeId: z.string().nullable().optional(),
+});
+
+export const commentInputSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Comment cannot be empty")
+    .max(2000, "Comment is too long"),
 });

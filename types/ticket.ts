@@ -16,6 +16,27 @@ export type Ticket = {
   priority: TicketPriority;
   description: string;
   status: TicketStatus;
+  assigneeId: string | null;
+  assigneeName: string | null;
 };
 
-export type TicketInput = Omit<Ticket, "id" | "status">;
+export type TicketInput = Omit<
+  Ticket,
+  "id" | "status" | "assigneeId" | "assigneeName"
+>;
+
+export type Agent = {
+  id: string;
+  name: string;
+  role: string;
+};
+
+export type TicketComment = {
+  id: number;
+  ticketId: number;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  body: string;
+  createdAt: string;
+};

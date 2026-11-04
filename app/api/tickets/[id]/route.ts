@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@/app/generated/prisma/client";
 import { getCurrentUser } from "@/lib/session";
+import { attachAssignees } from "@/lib/tickets";
 import { ticketUpdateSchema } from "@/lib/validation";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -57,12 +58,39 @@ export async function PUT(request: Request, { params }: RouteContext) {
     );
   }
 
+  const newAssigneeId = parsed.data.assigneeId;
+  const changesAssignee =
+    newAssigneeId !== undefined && newAssigneeId !== existing.assigneeId;
+
+  if (changesAssignee && user.role === "customer") {
+    return NextResponse.json(
+      { error: "Only agents and admins can assign tickets" },
+      { status: 403 }
+    );
+  }
+
+  if (changesAssignee && newAssigneeId) {
+    const assignee = await prisma.user.findFirst({
+      where: { id: newAssigneeId, role: { in: ["agent", "admin"] } },
+      select: { id: true },
+    });
+
+    if (!assignee) {
+      return NextResponse.json(
+        { error: "Assignee must be an agent or an admin" },
+        { status: 400 }
+      );
+    }
+  }
+
   const ticket = await prisma.ticket.update({
     where: { id },
     data: parsed.data,
   });
 
-  return NextResponse.json(ticket);
+  const [withAssignee] = await attachAssignees([ticket]);
+
+  return NextResponse.json(withAssignee);
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
